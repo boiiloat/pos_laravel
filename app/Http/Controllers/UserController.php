@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/UserController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\User;
@@ -16,7 +16,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'fullname' => 'required|string|max:255',
             'username' => 'required|string|unique:users,username|max:255',
-            'password' => 'required|string|min:8', // No need for 'confirmed' rule
+            'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
         ]);
 
@@ -24,12 +24,12 @@ class UserController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-         // Handle file upload if profile_image is provided
-         $profileImagePath = null;
-         if ($request->hasFile('profile_image')) {
-             // Store the image and get the file path if the file is provided
-             $profileImagePath = $request->file('profile_image')->store('profile_images', 'public');
-         }
+        // Handle file upload if profile_image is provided
+        $profileImagePath = null;
+        if ($request->hasFile('profile_image')) {
+            // Store the image and get the file path if the file is provided
+            $profileImagePath = $request->file('profile_image')->store('profile_images', 'public');
+        }
 
         // Create the user
         $user = new User([
@@ -43,7 +43,26 @@ class UserController extends Controller
 
         $user->save();
 
+        // Return the created user, including the full image URL
+        $user->profile_image = asset('storage/' . $user->profile_image);
+
         return response()->json($user, 201);
     }
 
+    // Get user information (for example, user details by ID)
+    public function show($id)
+    {
+        // Find the user by ID
+        $user = User::find($id);
+
+        // Check if user exists
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        // Return the user data, including the full image URL
+        $user->profile_image = asset('storage/' . $user->profile_image);
+
+        return response()->json($user);
+    }
 }

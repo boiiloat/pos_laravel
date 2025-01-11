@@ -21,3 +21,7 @@ use App\Http\Controllers\RoleController;
 
 Route::resource('users', UserController::class)->except('index'); // Excluding the 'index' route
 Route::resource('roles', RoleController::class)->except('index');
+
+// In routes/api.php
+Route::post('user', [UserController::class, 'store']); // Store a new user
+Route::get('user/{id}', [UserController::class, 'show']); // Get user by ID
