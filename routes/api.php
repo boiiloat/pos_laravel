@@ -16,20 +16,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // User routes
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'index']);
-        Route::post('/', [UserController::class, 'store']); // Only accessible to admins
+        Route::post('/', [UserController::class, 'store'])->middleware('can:create-users');
         Route::get('{id}', [UserController::class, 'show']);
-        Route::put('{id}', [UserController::class, 'update']);
-        Route::delete('{id}', [UserController::class, 'destroy']);
-        
+        Route::put('{id}', [UserController::class, 'update'])->middleware('can:update-users');
+        Route::delete('{id}', [UserController::class, 'destroy'])->middleware('can:delete-users');
     });
 
     // Role routes
     Route::prefix('roles')->group(function () {
-        Route::get('/', [RoleController::class, 'index']);
-        Route::post('/', [RoleController::class, 'store']);
-        Route::get('{id}', [RoleController::class, 'show']);
-        Route::put('{id}', [RoleController::class, 'update']);
-        Route::delete('{id}', [RoleController::class, 'destroy']);
+        Route::get('/', [RoleController::class, 'index'])->middleware('can:view-roles');
+        Route::post('/', [RoleController::class, 'store'])->middleware('can:create-roles');
+        Route::get('{id}', [RoleController::class, 'show'])->middleware('can:view-roles');
+        Route::put('{id}', [RoleController::class, 'update'])->middleware('can:update-roles');
+        Route::delete('{id}', [RoleController::class, 'destroy'])->middleware('can:delete-roles');
     });
 });
-
