@@ -22,7 +22,10 @@ class ProductController extends Controller
                     'name' => $product->name,
                     'price' => $product->price,
                     'image' => $product->image,
-                    'category_name' => $product->category->name ?? null,
+                    'category' => [
+                        'id' => $product->category_id,
+                        'name' => $product->category->name ?? null
+                    ],
                     'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
                     'created_at' => $product->created_at,
                     'updated_at' => $product->updated_at
@@ -79,7 +82,10 @@ class ProductController extends Controller
                     'name' => $product->name,
                     'price' => $product->price,
                     'image' => $product->image,
-                    'category_name' => $product->category->name ?? null,
+                    'category' => [
+                        'id' => $product->category_id,
+                        'name' => $product->category->name ?? null
+                    ],
                     'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
                     'created_at' => $product->created_at
                 ],
@@ -110,7 +116,10 @@ class ProductController extends Controller
                     'name' => $product->name,
                     'price' => $product->price,
                     'image' => $product->image,
-                    'category_name' => $product->category->name ?? null,
+                    'category' => [
+                        'id' => $product->category_id,
+                        'name' => $product->category->name ?? null
+                    ],
                     'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
                     'created_at' => $product->created_at,
                     'updated_at' => $product->updated_at
@@ -157,7 +166,10 @@ class ProductController extends Controller
                     'name' => $product->name,
                     'price' => $product->price,
                     'image' => $product->image,
-                    'category_name' => $product->category->name ?? null,
+                    'category' => [
+                        'id' => $product->category_id,
+                        'name' => $product->category->name ?? null
+                    ],
                     'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
                     'updated_at' => $product->updated_at
                 ],
