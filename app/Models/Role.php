@@ -10,8 +10,12 @@ class Role extends Model
     use HasFactory;
     
     protected $fillable = [
-        'name', 'create_date', 'create_by',
-        'is_delete', 'delete_date', 'delete_by'
+        'name', 
+        'create_date',
+        'create_by',
+        'is_delete', 
+        'delete_date', 
+        'delete_by'
     ];
 
     public function users()
