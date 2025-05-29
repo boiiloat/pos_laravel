@@ -66,19 +66,6 @@ class AuthServiceProvider extends ServiceProvider
             return false;
         });
 
-        // Product permissions
-        Gate::define('create-products', function ($user) {
-            return $user->role_id == 1 || $user->role_id == 2; // Admin and Cashier
-        });
-
-        Gate::define('update-products', function ($user) {
-            return $user->role_id == 1 || $user->role_id == 2; // Admin and Cashier
-        });
-
-        Gate::define('delete-products', function ($user) {
-            return $user->role_id == 1; // Admin only
-        });
-
         // Role permissions (if needed)
         Gate::define('view-roles', function ($user) {
             return $user->role_id == 1; // Admin only
@@ -95,5 +82,30 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('delete-roles', function ($user) {
             return $user->role_id == 1; // Admin only
         });
+
+
+        
+        // Product permissions
+        // Add this inside the boot() method
+        
+        Gate::define('patch-products', function ($user) {
+            return $user->role_id == 1 || $user->role_id == 2; // Same as update-products
+        });
+        Gate::define('create-products', function ($user) {
+            return $user->role_id == 1 || $user->role_id == 2; // Admin and Cashier
+        });
+
+        Gate::define('update-products', function ($user) {
+            return $user->role_id == 1 || $user->role_id == 2; // Admin and Cashier
+        });
+
+        Gate::define('delete-products', function ($user) {
+            return $user->role_id == 1; // Admin only
+        });
+
+
+
+
+
     }
 }

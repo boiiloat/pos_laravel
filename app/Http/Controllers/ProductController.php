@@ -170,6 +170,10 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         try {
+            Log::info('Incoming request data', $request->all());
+            Log::info('Request method: ' . $request->method());
+            Log::info('Content type: ' . $request->header('Content-Type'));
+            
             if (Gate::denies('update-products')) {
                 return response()->json([
                     'message' => 'Unauthorized action'
@@ -202,11 +206,15 @@ class ProductController extends Controller
             ]);
 
             return response()->json([
-                'data' => $product,
+                'data' => $product->fresh()->load(['category', 'creator']),
                 'message' => 'Product updated successfully'
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed for product update', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
             return response()->json([
                 'errors' => $e->errors(),
                 'message' => 'Validation failed'
@@ -214,45 +222,51 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             Log::error('Error updating product: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to update product'
+                'message' => 'Failed to update product',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-public function destroy(Product $product)
-{
-    try {
-        if (Gate::denies('delete-products')) {
-            return response()->json([
-                'message' => 'Unauthorized action'
-            ], Response::HTTP_FORBIDDEN);
-        }
-
-        // Delete the product image if it exists
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-            Log::info('Product image deleted during deletion', ['path' => $product->image]);
-        }
-
-        // Update the record with deletion info before deleting
-        $product->update([
-            'deleted_by' => auth()->id(),
-            'deleted_date' => now()
-        ]);
-
-        // Actually delete the record from database
-        $product->delete();
-
-        return response()->json([
-            'message' => 'Product deleted successfully'
-        ], Response::HTTP_NO_CONTENT);
-
-    } catch (\Exception $e) {
-        Log::error('Error deleting product: ' . $e->getMessage());
-        return response()->json([
-            'message' => 'Failed to delete product'
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    // NEW METHOD: Handle updates via POST with method spoofing
+    public function updateViaPost(Request $request, Product $product)
+    {
+        return $this->update($request, $product);
     }
-}
 
+    public function destroy(Product $product)
+    {
+        try {
+            if (Gate::denies('delete-products')) {
+                return response()->json([
+                    'message' => 'Unauthorized action'
+                ], Response::HTTP_FORBIDDEN);
+            }
+
+            // Delete the product image if it exists
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+                Log::info('Product image deleted during deletion', ['path' => $product->image]);
+            }
+
+            // Update the record with deletion info before deleting
+            $product->update([
+                'deleted_by' => auth()->id(),
+                'deleted_date' => now()
+            ]);
+
+            // Actually delete the record from database
+            $product->delete();
+
+            return response()->json([
+                'message' => 'Product deleted successfully'
+            ], Response::HTTP_NO_CONTENT);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting product: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to delete product'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

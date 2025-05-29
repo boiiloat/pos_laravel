@@ -53,13 +53,21 @@ Route::apiResource('categories', CategoryController::class)->middleware([
 Route::get('categories/{category}/products', [CategoryController::class, 'products']);
 
 
- // Products routes
-// Products routes using apiResource with middleware per method
-Route::apiResource('products', ProductController::class)->middleware([
-    'store' => 'can:create-products',
-    'update' => 'can:update-products',
-    'destroy' => 'can:delete-products',
-]);
+//products
+ // Products routes - Updated with POST method spoofing
+    Route::prefix('products')->group(function () {
+        Route::get('/', [ProductController::class, 'index']);
+        Route::post('/', [ProductController::class, 'store'])->middleware('can:create-products');
+        Route::get('/{product}', [ProductController::class, 'show']);
+        
+        // Regular PUT route (works with raw JSON)
+        Route::put('/{product}', [ProductController::class, 'update'])->middleware('can:update-products');
+        
+        // POST route for form-data updates (method spoofing)
+        Route::post('/{product}/update', [ProductController::class, 'updateViaPost'])->middleware('can:update-products');
+        
+        Route::delete('/{product}', [ProductController::class, 'destroy'])->middleware('can:delete-products');
+    });
 
 
 
