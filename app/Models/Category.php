@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Category extends Model
 {
     use HasFactory;
-    // Remove SoftDeletes trait
 
     protected $fillable = [
         'name',
@@ -21,13 +20,11 @@ class Category extends Model
         'deleted_date'
     ];
 
-    // Relationship with the user who created the category
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // Relationship with products
     public function products()
     {
         return $this->hasMany(Product::class);
