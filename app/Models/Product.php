@@ -24,6 +24,8 @@ class Product extends Model
         'deleted_date'
     ];
 
+    protected $appends = ['creator_name', 'category_name'];
+
     // Relationship with category
     public function category()
     {
@@ -49,5 +51,17 @@ class Product extends Model
             return asset('storage/products/' . $this->image);
         }
         return asset('images/default-product.png');
+    }
+
+    // Accessor for creator's full name
+    public function getCreatorNameAttribute()
+    {
+        return $this->creator ? $this->creator->fullname : null;
+    }
+
+    // Accessor for category name
+    public function getCategoryNameAttribute()
+    {
+        return $this->category ? $this->category->name : null;
     }
 }

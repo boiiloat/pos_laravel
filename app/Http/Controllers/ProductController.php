@@ -14,68 +14,30 @@ class ProductController extends Controller
     public function index()
     {
         try {
-            Log::info('Attempting to fetch products');
-            
-            // First, try without relationships
-            $productsCount = Product::count();
-            Log::info('Total products count: ' . $productsCount);
-            
-            if ($productsCount === 0) {
-                Log::info('No products found in database');
-                return response()->json([
-                    'data' => [],
-                    'message' => 'No products found'
-                ]);
-            }
-            
-            // Try to get products without relationships first
-            $productsWithoutRelations = Product::all();
-            Log::info('Products without relations fetched successfully', [
-                'count' => $productsWithoutRelations->count()
-            ]);
-            
-            // Now try with relationships
             $products = Product::with(['category', 'creator'])->get();
-            Log::info('Products with relations fetched successfully', [
-                'count' => $products->count()
-            ]);
-            
-            return response()->json([
-                'data' => $products,
-                'message' => 'Products retrieved successfully'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error fetching products', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            
-            return response()->json([
-                'message' => 'Failed to retrieve products',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
 
-    public function indexSimple()
-    {
-        try {
-            $products = Product::all();
-            
+            $transformedProducts = $products->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'image' => $product->image,
+                    'category_name' => $product->category->name ?? null,
+                    'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
+                    'created_at' => $product->created_at,
+                    'updated_at' => $product->updated_at
+                ];
+            });
+
             return response()->json([
-                'data' => $products,
+                'data' => $transformedProducts,
                 'message' => 'Products retrieved successfully'
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in simple index: ' . $e->getMessage());
-            
+            Log::error('Product fetch error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to retrieve products',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+                'message' => 'Failed to retrieve products'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -83,17 +45,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         try {
-            Log::info('Product creation attempt', [
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-                'user_role' => auth()->user()?->role_id ?? 'no user'
-            ]);
-
             if (Gate::denies('create-products')) {
-                Log::warning('Authorization failed for product creation', [
-                    'user_id' => auth()->id(),
-                    'user_role' => auth()->user()?->role_id
-                ]);
                 return response()->json([
                     'message' => 'Unauthorized action'
                 ], Response::HTTP_FORBIDDEN);
@@ -106,12 +58,9 @@ class ProductController extends Controller
                 'image' => 'nullable|image|max:2048'
             ]);
 
-            Log::info('Validation passed', ['validated_data' => $validated]);
-
             $imagePath = null;
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('products', 'public');
-                Log::info('Product image uploaded', ['path' => $imagePath]);
             }
 
             $product = Product::create([
@@ -122,32 +71,30 @@ class ProductController extends Controller
                 'created_by' => auth()->id()
             ]);
 
-            Log::info('Product created successfully', ['product_id' => $product->id]);
+            $product->load(['category', 'creator']);
 
             return response()->json([
-                'data' => $product,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'image' => $product->image,
+                    'category_name' => $product->category->name ?? null,
+                    'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
+                    'created_at' => $product->created_at
+                ],
                 'message' => 'Product created successfully'
             ], Response::HTTP_CREATED);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Validation failed for product creation', [
-                'errors' => $e->errors(),
-                'request_data' => $request->all()
-            ]);
             return response()->json([
                 'errors' => $e->errors(),
                 'message' => 'Validation failed'
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Exception $e) {
-            Log::error('Error creating product', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all(),
-                'user_id' => auth()->id()
-            ]);
+            Log::error('Product creation failed: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to create product',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+                'message' => 'Failed to create product'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -155,12 +102,23 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         try {
+            $product->load(['category', 'creator']);
+
             return response()->json([
-                'data' => $product->load(['category', 'creator']),
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'image' => $product->image,
+                    'category_name' => $product->category->name ?? null,
+                    'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
+                    'created_at' => $product->created_at,
+                    'updated_at' => $product->updated_at
+                ],
                 'message' => 'Product retrieved successfully'
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching product: ' . $e->getMessage());
+            Log::error('Product fetch error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to retrieve product'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -170,10 +128,6 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         try {
-            Log::info('Incoming request data', $request->all());
-            Log::info('Request method: ' . $request->method());
-            Log::info('Content type: ' . $request->header('Content-Type'));
-            
             if (Gate::denies('update-products')) {
                 return response()->json([
                     'message' => 'Unauthorized action'
@@ -181,57 +135,46 @@ class ProductController extends Controller
             }
 
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'category_id' => 'required|exists:categories,id',
+                'name' => 'sometimes|required|string|max:255',
+                'price' => 'sometimes|required|numeric|min:0',
+                'category_id' => 'sometimes|required|exists:categories,id',
                 'image' => 'nullable|image|max:2048'
             ]);
 
-            $imagePath = $product->image;
             if ($request->hasFile('image')) {
-                // Delete old image if exists
                 if ($product->image) {
                     Storage::disk('public')->delete($product->image);
-                    Log::info('Old product image deleted', ['path' => $product->image]);
                 }
-                $imagePath = $request->file('image')->store('products', 'public');
-                Log::info('New product image uploaded', ['path' => $imagePath]);
+                $validated['image'] = $request->file('image')->store('products', 'public');
             }
 
-            $product->update([
-                'name' => $validated['name'],
-                'price' => $validated['price'],
-                'category_id' => $validated['category_id'],
-                'image' => $imagePath
-            ]);
+            $product->update($validated);
+            $product->refresh()->load(['category', 'creator']);
 
             return response()->json([
-                'data' => $product->fresh()->load(['category', 'creator']),
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'image' => $product->image,
+                    'category_name' => $product->category->name ?? null,
+                    'creator_name' => $product->creator->fullname ?? $product->creator->name ?? null,
+                    'updated_at' => $product->updated_at
+                ],
                 'message' => 'Product updated successfully'
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Validation failed for product update', [
-                'errors' => $e->errors(),
-                'request_data' => $request->all()
-            ]);
             return response()->json([
                 'errors' => $e->errors(),
                 'message' => 'Validation failed'
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Exception $e) {
-            Log::error('Error updating product: ' . $e->getMessage());
+            Log::error('Product update failed: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to update product',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+                'message' => 'Failed to update product'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    // NEW METHOD: Handle updates via POST with method spoofing
-    public function updateViaPost(Request $request, Product $product)
-    {
-        return $this->update($request, $product);
     }
 
     public function destroy(Product $product)
@@ -243,19 +186,15 @@ class ProductController extends Controller
                 ], Response::HTTP_FORBIDDEN);
             }
 
-            // Delete the product image if it exists
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
-                Log::info('Product image deleted during deletion', ['path' => $product->image]);
             }
 
-            // Update the record with deletion info before deleting
             $product->update([
                 'deleted_by' => auth()->id(),
                 'deleted_date' => now()
             ]);
 
-            // Actually delete the record from database
             $product->delete();
 
             return response()->json([
@@ -263,7 +202,7 @@ class ProductController extends Controller
             ], Response::HTTP_NO_CONTENT);
 
         } catch (\Exception $e) {
-            Log::error('Error deleting product: ' . $e->getMessage());
+            Log::error('Product deletion failed: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to delete product'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
