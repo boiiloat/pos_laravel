@@ -14,7 +14,8 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // 'App\Models\Model' => 'App\Models\ModelPolicy',
+            // 'App\Models\Model' => 'App\Models\ModelPolicy',
+        Table::class => TablePolicy::class,
     ];
 
     /**
@@ -84,10 +85,10 @@ class AuthServiceProvider extends ServiceProvider
         });
 
 
-        
+
         // Product permissions
         // Add this inside the boot() method
-        
+
         Gate::define('patch-products', function ($user) {
             return $user->role_id == 1 || $user->role_id == 2; // Same as update-products
         });
@@ -101,6 +102,16 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('delete-products', function ($user) {
             return $user->role_id == 1; // Admin only
+        });
+
+
+        Gate::define('manage-tables', function ($user) {
+            return $user->role_id === 1; // Only admin can manage tables
+        });
+
+
+        Gate::define('manage-tables', function ($user) {
+            return $user->role_id === 1; // Only admin can manage tables
         });
 
 

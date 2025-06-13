@@ -65,13 +65,6 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            if (Gate::denies('create-users')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], Response::HTTP_FORBIDDEN);
-            }
-
             // Check if the current user is an admin (role_id = 1)
             if ($request->user()->role_id != 1) {
                 return response()->json([
@@ -98,7 +91,10 @@ class UserController extends Controller
                 'role_id' => $validated['role_id'],
                 'create_date' => now(),
                 'create_by' => $request->user()->fullname,
-                'is_delete' => false
+                'is_delete' => false,  // ✅ FIXED: Explicitly set is_delete to false
+                'deleted_at' => null,  // ✅ FIXED: Explicitly set deleted_at to null
+                'created_at' => now(), // ✅ FIXED: Set created_at timestamp
+                'updated_at' => now()  // ✅ FIXED: Set updated_at timestamp
             ];
     
             // Handle file upload if present
@@ -110,6 +106,15 @@ class UserController extends Controller
             // Create the new user
             $user = User::create($userData);
             $user->load('role');
+
+            // ✅ FIXED: Log the created user for debugging
+            Log::info('New user created:', [
+                'id' => $user->id,
+                'username' => $user->username,
+                'is_delete' => $user->is_delete,
+                'deleted_at' => $user->deleted_at,
+                'role_id' => $user->role_id
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -124,7 +129,9 @@ class UserController extends Controller
                     'profile_image' => $user->profile_image,
                     'profile_image_url' => $user->profile_image ? asset('storage/'.$user->profile_image) : null,
                     'create_date' => $user->create_date,
-                    'create_by' => $user->create_by
+                    'create_by' => $user->create_by,
+                    'is_delete' => $user->is_delete, // ✅ FIXED: Include in response for verification
+                    'deleted_at' => $user->deleted_at // ✅ FIXED: Include in response for verification
                 ],
                 'message' => 'User created successfully.',
                 'created_by' => $request->user()->fullname,
@@ -183,17 +190,10 @@ class UserController extends Controller
         }
     }
 
-    // Method to update a user (NEW - Missing functionality)
+    // Method to update a user
     public function update(Request $request, $id)
     {
         try {
-            if (Gate::denies('update-users')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], Response::HTTP_FORBIDDEN);
-            }
-
             $user = User::where('is_delete', false)
                 ->whereNull('deleted_at')
                 ->findOrFail($id);
@@ -256,6 +256,10 @@ class UserController extends Controller
             // Add update tracking
             $updateData['updated_at'] = now();
             $updateData['updated_by'] = $currentUser->fullname;
+
+            // ✅ FIXED: Ensure is_delete remains false during updates
+            $updateData['is_delete'] = false;
+            $updateData['deleted_at'] = null;
 
             // Update the user
             $user->update($updateData);
@@ -299,147 +303,33 @@ class UserController extends Controller
     // Method to update a user via POST (for form-data with method spoofing)
     public function updateViaPost(Request $request, $id)
     {
-        try {
-            if (Gate::denies('update-users')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], Response::HTTP_FORBIDDEN);
-            }
-
-            $user = User::where('is_delete', false)
-                ->whereNull('deleted_at')
-                ->findOrFail($id);
-
-            $currentUser = $request->user();
-
-            // Check permissions - admins can update anyone, non-admins can only update themselves
-            if ($currentUser->role_id != 1 && $currentUser->id != $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can only update your own profile unless you are an administrator.'
-                ], Response::HTTP_FORBIDDEN);
-            }
-
-            // Validation rules
-            $rules = [
-                'fullname' => 'sometimes|required|string|max:255',
-                'username' => 'sometimes|required|string|max:255|unique:users,username,' . $user->id,
-                'password' => 'sometimes|nullable|string|min:8',
-                'role_id' => 'sometimes|required|exists:roles,id',
-                'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-            ];
-
-            // Non-admins cannot change role_id
-            if ($currentUser->role_id != 1) {
-                unset($rules['role_id']);
-            }
-
-            $validated = $request->validate($rules);
-
-            // Prepare update data
-            $updateData = [];
-            
-            if (isset($validated['fullname'])) {
-                $updateData['fullname'] = $validated['fullname'];
-            }
-            
-            if (isset($validated['username'])) {
-                $updateData['username'] = $validated['username'];
-            }
-            
-            if (isset($validated['password']) && !empty($validated['password'])) {
-                $updateData['password'] = Hash::make($validated['password']);
-            }
-            
-            if (isset($validated['role_id']) && $currentUser->role_id == 1) {
-                // Only admins can change roles
-                $updateData['role_id'] = $validated['role_id'];
-            }
-
-            // Handle profile image upload
-            if ($request->hasFile('profile_image')) {
-                // Delete old image if exists
-                if ($user->profile_image) {
-                    Storage::disk('public')->delete($user->profile_image);
-                }
-                $updateData['profile_image'] = $request->file('profile_image')->store('profile_images', 'public');
-            }
-
-            // Add update tracking
-            $updateData['updated_at'] = now();
-            $updateData['updated_by'] = $currentUser->fullname;
-
-            // Update the user
-            $user->update($updateData);
-            $user->refresh()->load('role');
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'fullname' => $user->fullname,
-                    'username' => $user->username,
-                    'role' => [
-                        'id' => $user->role_id,
-                        'name' => $user->role->name ?? null
-                    ],
-                    'profile_image' => $user->profile_image,
-                    'profile_image_url' => $user->profile_image ? asset('storage/'.$user->profile_image) : null,
-                    'updated_at' => $user->updated_at,
-                    'updated_by' => $updateData['updated_by'] ?? null
-                ],
-                'message' => 'User updated successfully',
-                'updated_by' => $currentUser->fullname
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed.',
-                'errors' => $e->errors()
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (\Exception $e) {
-            Log::error('User update via POST failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update user.',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        // This method calls the regular update method
+        return $this->update($request, $id);
     }
 
     // Method to delete a user (only allowed for admins)
     public function destroy($id)
     {
         try {
-            if (Gate::denies('delete-users')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized action'
-                ], Response::HTTP_FORBIDDEN);
-            }
-
             // Find the user to delete
             $user = User::findOrFail($id);
     
             // Get the current logged-in user
             $currentUser = auth()->user();
+
+            // Only admins can delete users
+            if ($currentUser->role_id != 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only administrators can delete users.'
+                ], Response::HTTP_FORBIDDEN);
+            }
     
-            // Check if the current user is an admin (role_id = 1) and trying to delete an admin (role_id = 1)
+            // Check if the current user is an admin trying to delete another admin
             if ($currentUser->role_id == 1 && $user->role_id == 1) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Admin users cannot delete other admins.',
-                ], Response::HTTP_FORBIDDEN);
-            }
-    
-            // Check if the user has role_id = 2 (cashier) and if the current user is an admin
-            if ($user->role_id == 2 && $currentUser->role_id != 1) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can only delete users with role_id = 2 (cashiers).',
-                    'hint' => 'Only administrators can delete cashiers.'
                 ], Response::HTTP_FORBIDDEN);
             }
 
