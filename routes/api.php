@@ -16,13 +16,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     
     // User routes
-    Route::prefix('users')->group(function () {
-        Route::get('/', [UserController::class, 'index']);
-        Route::post('/', [UserController::class, 'store'])->middleware('can:create-users');
-        Route::get('{user}', [UserController::class, 'show']);
-        Route::put('{user}', [UserController::class, 'update'])->middleware('can:update-users');
-        Route::delete('{user}', [UserController::class, 'destroy'])->middleware('can:delete-users');
-    });
+    Route::prefix('users')->group(function () {         
+    Route::get('/', [UserController::class, 'index']);         
+    Route::post('/', [UserController::class, 'store'])->middleware('can:create-users');         
+    Route::get('/{id}', [UserController::class, 'show']);                  
+    
+    // Regular PUT route (works with raw JSON)         
+    Route::put('/{id}', [UserController::class, 'update'])->middleware('can:update-users');                  
+    
+    // POST route for form-data updates (method spoofing)         
+    Route::post('/{id}/update', [UserController::class, 'updateViaPost'])->middleware('can:update-users');                  
+    
+    Route::delete('/{id}', [UserController::class, 'destroy'])->middleware('can:delete-users');     
+});
 
     // Role routes
     Route::prefix('roles')->group(function () {
@@ -53,8 +59,8 @@ Route::apiResource('categories', CategoryController::class)->middleware([
 Route::get('categories/{category}/products', [CategoryController::class, 'products']);
 
 
-//products
- // Products routes - Updated with POST method spoofing
+    //products
+    // Products routes - Updated with POST method spoofing
     Route::prefix('products')->group(function () {
         Route::get('/', [ProductController::class, 'index']);
         Route::post('/', [ProductController::class, 'store'])->middleware('can:create-products');
