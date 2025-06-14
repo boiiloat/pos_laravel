@@ -8,15 +8,20 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleProductController;
+use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\SalePaymentController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
+    // Authentication
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // User routes
+    // User management
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'index']);
         Route::post('/', [UserController::class, 'store'])->middleware('can:create-users');
@@ -26,7 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{user}', [UserController::class, 'destroy'])->middleware('can:delete-users');
     });
 
-    // Role routes
+    // Role management
     Route::apiResource('roles', RoleController::class)->middleware([
         'index' => 'can:view-roles',
         'store' => 'can:create-roles',
@@ -35,7 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
         'destroy' => 'can:delete-roles'
     ]);
 
-    // Category routes
+    // Category management
     Route::apiResource('categories', CategoryController::class)->middleware([
         'store' => 'can:create-categories',
         'update' => 'can:update-categories',
@@ -43,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     ]);
     Route::get('categories/{category}/products', [CategoryController::class, 'products']);
 
-    // Product routes
+    // Product management
     Route::prefix('products')->group(function () {
         Route::get('/', [ProductController::class, 'index']);
         Route::post('/', [ProductController::class, 'store'])->middleware('can:create-products');
@@ -53,6 +58,37 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{product}', [ProductController::class, 'destroy'])->middleware('can:delete-products');
     });
 
-    // Table routes
+    // Table management
     Route::apiResource('tables', TableController::class);
+
+    // Sales management
+    Route::apiResource('sales', SaleController::class);
+
+    // Sale products nested routes
+    Route::prefix('sales/{sale}')->group(function () {
+        Route::post('products', [SaleController::class, 'addProduct']);
+        Route::get('products', [SaleController::class, 'getProducts']);
+        Route::delete('products/{saleProduct}', [SaleController::class, 'removeProduct']);
+    });
+
+    // Sale products standalone routes
+    Route::apiResource('sale-products', SaleProductController::class)->except(['index']);
+
+    // Payment methods
+    Route::apiResource('payment-methods', PaymentMethodController::class);
+
+
+
+    // routes/api.php
+    Route::apiResource('sale-payments', SalePaymentController::class);
+
+
+
+
+
+
+
+
 });
+
+
