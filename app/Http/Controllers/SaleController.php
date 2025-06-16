@@ -21,23 +21,32 @@ class SaleController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'invoice_number' => 'sometimes|unique:sales',
-            'sub_total' => 'required|numeric|min:0',
-            'discount_type' => 'nullable|in:fixed,percentage',
-            'discount' => 'nullable|numeric|min:0',
-            'grand_total' => 'sometimes|numeric',
-            'is_paid' => 'boolean',
-            'status' => 'in:pending,completed,cancelled',
-            'sale_date' => 'required|date',
-            'table_id' => 'nullable|exists:tables,id',
-            'created_by' => 'required|exists:users,id',
-            'products' => 'sometimes|array',
-            'products.*.product_id' => 'required_with:products|exists:products,id',
-            'products.*.quantity' => 'required_with:products|integer|min:1',
-            'products.*.price' => 'required_with:products|numeric|min:0',
-            'products.*.is_free' => 'sometimes|boolean',
-        ]);
+        try {
+            $validated = $request->validate([
+                'invoice_number' => 'sometimes|unique:sales',
+                'sub_total' => 'required|numeric|min:0',
+                'discount_type' => 'nullable|in:fixed,percentage',
+                'discount' => 'nullable|numeric|min:0',
+                'grand_total' => 'sometimes|numeric',
+                'is_paid' => 'boolean',
+                'status' => 'in:pending,completed,cancelled',
+                'sale_date' => 'required|date',
+                'table_id' => 'nullable|exists:tables,id',
+                'created_by' => 'required|exists:users,id',
+                'products' => 'sometimes|array',
+                'products.*.product_id' => 'required_with:products|exists:products,id',
+                'products.*.quantity' => 'required_with:products|integer|min:1',
+                'products.*.price' => 'required_with:products|numeric|min:0',
+                'products.*.is_free' => 'sometimes|boolean',
+
+
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error creating sale',
+                'error' => $e->getMessage()
+            ], 500);
+        }
 
         // Calculate grand_total if not provided
         if (!isset($validated['grand_total'])) {
@@ -94,7 +103,7 @@ class SaleController extends Controller
             'table_id' => 'nullable|exists:tables,id',
             'created_by' => 'sometimes|exists:users,id',
             'products' => 'sometimes|array',
-            'products.*.id' => 'sometimes|exists:sale_products,id,sale_id,'.$sale->id,
+            'products.*.id' => 'sometimes|exists:sale_products,id,sale_id,' . $sale->id,
             'products.*.product_id' => 'required_with:products|exists:products,id',
             'products.*.quantity' => 'required_with:products|integer|min:1',
             'products.*.price' => 'required_with:products|numeric|min:0',
@@ -184,7 +193,7 @@ class SaleController extends Controller
     protected function handleProductUpdates(Sale $sale, array $products)
     {
         $existingProductIds = [];
-        
+
         foreach ($products as $productData) {
             if (isset($productData['id'])) {
                 // Update existing product
@@ -202,7 +211,7 @@ class SaleController extends Controller
                 $this->addProductToSale($sale, $product, $productData);
             }
         }
-        
+
         // Remove products not included in the request
         $sale->products()
             ->whereNotIn('id', $existingProductIds)
@@ -212,28 +221,28 @@ class SaleController extends Controller
     /**
      * Recalculate sale totals based on products
      */
-   protected function recalculateSaleTotals(Sale $sale)
-{
-    // Calculate subtotal at database level for better performance
-    $subTotal = $sale->products()
-        ->selectRaw('SUM(price * quantity) as total')
-        ->value('total') ?? 0;
+    protected function recalculateSaleTotals(Sale $sale)
+    {
+        // Calculate subtotal at database level for better performance
+        $subTotal = $sale->products()
+            ->selectRaw('SUM(price * quantity) as total')
+            ->value('total') ?? 0;
 
-    $grandTotal = $subTotal;
+        $grandTotal = $subTotal;
 
-    // Apply discount if exists
-    if ($sale->discount_type && $sale->discount) {
-        if ($sale->discount_type === 'fixed') {
-            $grandTotal -= $sale->discount;
-        } else {
-            $grandTotal -= ($subTotal * $sale->discount / 100);
+        // Apply discount if exists
+        if ($sale->discount_type && $sale->discount) {
+            if ($sale->discount_type === 'fixed') {
+                $grandTotal -= $sale->discount;
+            } else {
+                $grandTotal -= ($subTotal * $sale->discount / 100);
+            }
+            $grandTotal = max(0, $grandTotal);
         }
-        $grandTotal = max(0, $grandTotal);
-    }
 
-    $sale->update([
-        'sub_total' => $subTotal,
-        'grand_total' => $grandTotal
-    ]);
-}
+        $sale->update([
+            'sub_total' => $subTotal,
+            'grand_total' => $grandTotal
+        ]);
+    }
 }

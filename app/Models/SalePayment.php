@@ -14,13 +14,13 @@ class SalePayment extends Model
         'payment_method_name',
         'sale_id',
         'payment_method_id',
-        'created_by'
+        'created_by',
     ];
 
     protected $casts = [
         'payment_amount' => 'decimal:2',
         'exchange_rate' => 'decimal:4',
-        'created_date' => 'datetime'
+        'created_date' => 'datetime',
     ];
 
     protected $with = ['createdBy', 'paymentMethod'];
@@ -28,18 +28,17 @@ class SalePayment extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by')
-                   ->select(['id', 'fullname']);
+            ->select(['id', 'fullname']);
     }
 
     public function sale()
     {
-        return $this->belongsTo(Sale::class)
-                   ->select(['id', 'invoice_number']);
+        return $this->belongsTo(Sale::class);
     }
 
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class)
-                   ->select(['id', 'payment_method_name']);
+            ->select(['id', 'payment_method_name']);
     }
 }

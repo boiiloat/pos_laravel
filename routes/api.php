@@ -72,7 +72,14 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Sale products standalone routes
-    Route::apiResource('sale-products', SaleProductController::class)->except(['index']);
+    Route::prefix('sale-products')->group(function () {
+        Route::get('/', [SaleProductController::class, 'index']);
+        Route::post('/', [SaleProductController::class, 'store']);
+        Route::post('/bulk', [SaleProductController::class, 'storeBulk']);
+        Route::get('/{id}', [SaleProductController::class, 'show']);
+        Route::put('/{id}', [SaleProductController::class, 'update']);
+        Route::delete('/{id}', [SaleProductController::class, 'destroy']);
+    });
 
     // Payment methods
     Route::apiResource('payment-methods', PaymentMethodController::class);

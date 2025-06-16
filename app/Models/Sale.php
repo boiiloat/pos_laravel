@@ -63,7 +63,7 @@ class Sale extends Model
     {
         return $this->hasMany(SaleProduct::class);
     }
-    
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -73,4 +73,14 @@ class Sale extends Model
     {
         return $this->belongsTo(Table::class);
     }
+
+    // App\Models\Sale.php
+
+    public function payments()
+    {
+        return $this->hasMany(SalePayment::class);
+    }
+
 }
+
+
