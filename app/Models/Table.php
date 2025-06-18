@@ -9,6 +9,7 @@ class Table extends Model
 {
     protected $fillable = [
         'name',
+        'table_id',
         'created_by',
         'deleted_by',
         'deleted_date'

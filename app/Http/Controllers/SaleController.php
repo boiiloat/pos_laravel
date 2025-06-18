@@ -65,6 +65,11 @@ class SaleController extends Controller
         }
 
         $sale = Sale::create($validated);
+        // Then create the sale with table_id
+        $sale = Sale::create(array_merge($validated, [
+            'invoice_number' => 'INV-' . date('Ymd') . '-' . strtoupper(uniqid()),
+            'table_id' => $validated['table_id']
+        ]));
 
         // Add products if provided
         if (isset($validated['products'])) {
@@ -100,7 +105,7 @@ class SaleController extends Controller
             'is_paid' => 'boolean',
             'status' => 'in:pending,completed,cancelled',
             'sale_date' => 'sometimes|date',
-            'table_id' => 'nullable|exists:tables,id',
+            'table_id' => 'required|exists:tables,id',
             'created_by' => 'sometimes|exists:users,id',
             'products' => 'sometimes|array',
             'products.*.id' => 'sometimes|exists:sale_products,id,sale_id,' . $sale->id,
